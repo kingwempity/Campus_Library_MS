@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}图书查询 - 校园图书借阅管理系统{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <h2 class="text-2xl font-semibold">图书查询</h2>
+    <form method="get" class="flex items-center gap-2">
+      <input name="q" value="{{ q }}" placeholder="书名/作者/ISBN/分类" class="w-72 rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-4 py-2">
+      <button class="rounded-full bg-primary-600 text-white px-4 py-2 hover:bg-primary-500"><i data-feather="search"></i></button>
+    </form>
+  </div>
+
+  <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for book in page_obj %}
+    <div class="rounded-2xl border border-black/10 dark:border-white/10 p-5 bg-white/60 dark:bg-white/5 backdrop-blur">
+      <div class="flex items-start justify-between">
+        <div>
+          <h3 class="font-semibold">{{ book.title }}</h3>
+          <div class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ book.author }} · {{ book.publisher }}</div>
+          <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">ISBN: {{ book.isbn }}</div>
+        </div>
+        <span class="text-xs rounded-full px-2 py-1 border border-black/10 dark:border-white/10">{{ book.category|default:'未分类' }}</span>
+      </div>
+      <div class="mt-4 text-sm">可借：<span class="font-medium">{{ book.available_copies }}</span> / {{ book.total_copies }}</div>
+    </div>
+    {% empty %}
+    <div class="col-span-full text-center text-gray-500 dark:text-gray-400">暂无数据</div>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+  <div class="mt-6 flex items-center justify-center gap-2">
+    {% if page_obj.has_previous %}
+      <a href="?q={{ q }}&page={{ page_obj.previous_page_number }}" class="px-3 py-1 rounded border border-black/10 dark:border-white/10">上一页</a>
+    {% endif %}
+    <span class="text-sm">第 {{ page_obj.number }} / {{ page_obj.paginator.num_pages }} 页</span>
+    {% if page_obj.has_next %}
+      <a href="?q={{ q }}&page={{ page_obj.next_page_number }}" class="px-3 py-1 rounded border border-black/10 dark:border-white/10">下一页</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="mt-10 text-center">
+    <a href="/borrowing/demo/" class="inline-flex items-center gap-2 rounded-full bg-primary-600 text-white px-5 py-2.5 text-sm hover:bg-primary-500">
+      <i data-feather="play-circle"></i>
+      借阅流程演示
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}借阅演示 - 校园图书借阅管理系统{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
+  <h2 class="text-2xl font-semibold">借阅流程演示</h2>
+  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">先在管理后台添加图书，再在此进行借阅/归还/续借操作。</p>
+
+  {% if messages %}
+  <div class="mt-4 space-y-2">
+    {% for m in messages %}
+    <div class="rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 {{ 'bg-green-50 dark:bg-green-900/20' if m.tags=='success' else 'bg-red-50 dark:bg-red-900/20' }}">
+      {{ m }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="rounded-2xl p-6 border border-black/10 dark:border-white/10">
+      <h3 class="font-medium flex items-center gap-2"><i data-feather="plus-square"></i> 借阅</h3>
+      <form method="post" action="{% url 'borrow' %}" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <label class="block text-sm">ISBN</label>
+        <input name="isbn" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="978...">
+        <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">借阅</button>
+      </form>
+    </div>
+    <div class="rounded-2xl p-6 border border-black/10 dark:border-white/10">
+      <h3 class="font-medium flex items-center gap-2"><i data-feather="corner-down-left"></i> 归还</h3>
+      <form method="post" action="{% url 'return_book' %}" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <label class="block text-sm">借阅记录ID</label>
+        <input name="record_id" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="在后台或接口查询到的ID">
+        <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">归还</button>
+      </form>
+    </div>
+    <div class="rounded-2xl p-6 border border-black/10 dark:border-white/10">
+      <h3 class="font-medium flex items-center gap-2"><i data-feather="refresh-ccw"></i> 续借</h3>
+      <form method="post" action="{% url 'renew' %}" class="mt-4 space-y-3">
+        {% csrf_token %}
+        <label class="block text-sm">借阅记录ID</label>
+        <input name="record_id" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="在后台或接口查询到的ID">
+        <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">续借</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="mt-10 text-sm text-gray-500 dark:text-gray-400">
+    小贴士：你可以在后台的 借阅记录 查看记录ID；后续我们将提供前台列表与筛选。
+  </div>
+</div>
+{% endblock %}
+
+
