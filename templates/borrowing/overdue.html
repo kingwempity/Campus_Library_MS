@@ -1,0 +1,195 @@
+{% extends 'base.html' %}
+{% block title %}逾期与罚款管理 - 校园图书借阅管理系统{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">逾期与罚款管理</h1>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">管理逾期借阅记录和罚款</p>
+    </div>
+    <a href="/" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">
+      <i data-feather="home"></i>
+      返回首页
+    </a>
+  </div>
+
+  {% if messages %}
+  <div class="mb-6 space-y-2">
+    {% for m in messages %}
+    <div class="rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 {% if m.tags == 'success' %}bg-green-50 dark:bg-green-900/20{% else %}bg-red-50 dark:bg-red-900/20{% endif %}">
+      {{ m }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- 统计卡片 -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-300">逾期记录数</p>
+          <p class="text-3xl font-semibold mt-2 text-red-600 dark:text-red-400">{{ overdue_count }}</p>
+        </div>
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+          <i data-feather="alert-circle"></i>
+        </span>
+      </div>
+    </div>
+    <div class="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-300">总罚款金额</p>
+          <p class="text-3xl font-semibold mt-2 text-orange-600 dark:text-orange-400">¥{{ total_fine|floatformat:2 }}</p>
+        </div>
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400">
+          <i data-feather="dollar-sign"></i>
+        </span>
+      </div>
+    </div>
+    <div class="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-6">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-sm text-gray-600 dark:text-gray-300">罚款规则</p>
+          <p class="text-sm font-medium mt-2">{{ rule.loan_period_days }}天 / 每日¥{{ rule.daily_fine }}</p>
+        </div>
+        <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+          <i data-feather="settings"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 逾期记录列表 -->
+  <div class="mb-8">
+    <h2 class="text-xl font-semibold mb-4">逾期记录</h2>
+    {% if overdue_records %}
+    <div class="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-gray-50 dark:bg-zinc-800 border-b border-black/10 dark:border-white/10">
+            <th class="px-4 py-3 text-left text-sm font-medium">记录ID</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">借阅人</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">图书</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">借出时间</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">应还时间</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">逾期天数</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">罚款金额</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in overdue_records %}
+          <tr class="border-b border-black/5 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+            <td class="px-4 py-3">
+              <span class="font-mono font-semibold text-primary-600 dark:text-primary-400">{{ record.id }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ record.user.get_full_name|default:record.user.username }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ record.user.username }}</span>
+                {% if record.user.student_id %}
+                <span class="text-xs text-gray-500 dark:text-gray-400">学号: {{ record.user.student_id }}</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ record.book.title }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">ISBN: {{ record.book.isbn }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm">{{ record.borrowed_at|date:"Y-m-d H:i" }}</td>
+            <td class="px-4 py-3 text-sm text-red-600 dark:text-red-400 font-medium">{{ record.due_at|date:"Y-m-d" }}</td>
+            <td class="px-4 py-3">
+              {% now "Y-m-d" as today %}
+              {% with days=record.due_at|date:"Y-m-d" %}
+              {% if days < today %}
+                {% with diff=record.due_at|timesince:now %}
+                <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                  已逾期
+                </span>
+                {% endwith %}
+              {% else %}
+                <span class="text-gray-500">-</span>
+              {% endif %}
+              {% endwith %}
+            </td>
+            <td class="px-4 py-3">
+              <span class="font-semibold text-orange-600 dark:text-orange-400">¥{{ record.fine_amount|floatformat:2 }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <form method="post" action="{% url 'return_overdue' %}" class="inline" onsubmit="return confirm('确认归还此逾期记录？')">
+                {% csrf_token %}
+                <input type="hidden" name="record_id" value="{{ record.id }}">
+                <button type="submit" class="text-xs text-primary-600 dark:text-primary-400 hover:underline">归还</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 p-8 text-center">
+      <i data-feather="check-circle" class="w-12 h-12 mx-auto mb-2 text-green-500"></i>
+      <p class="text-gray-500 dark:text-gray-400">暂无逾期记录</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- 即将逾期记录 -->
+  {% if soon_due %}
+  <div>
+    <h2 class="text-xl font-semibold mb-4">即将逾期（3天内到期）</h2>
+    <div class="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900">
+      <table class="w-full border-collapse">
+        <thead>
+          <tr class="bg-yellow-50 dark:bg-yellow-900/20 border-b border-black/10 dark:border-white/10">
+            <th class="px-4 py-3 text-left text-sm font-medium">记录ID</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">借阅人</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">图书</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">应还时间</th>
+            <th class="px-4 py-3 text-left text-sm font-medium">剩余天数</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for record in soon_due %}
+          <tr class="border-b border-black/5 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+            <td class="px-4 py-3">
+              <span class="font-mono font-semibold text-primary-600 dark:text-primary-400">{{ record.id }}</span>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ record.user.get_full_name|default:record.user.username }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">{{ record.user.username }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex flex-col">
+                <span class="font-medium">{{ record.book.title }}</span>
+                <span class="text-xs text-gray-500 dark:text-gray-400">ISBN: {{ record.book.isbn }}</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-sm text-yellow-600 dark:text-yellow-400 font-medium">{{ record.due_at|date:"Y-m-d" }}</td>
+            <td class="px-4 py-3">
+              <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                即将到期
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+  if (window.feather) {
+    window.feather.replace();
+  }
+</script>
+{% endblock %}
+

@@ -144,6 +144,18 @@ SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 
+# Session security settings - 会话安全管理
+# 浏览器关闭时会话过期（解决浏览器意外退出后仍保持登录的安全问题）
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+# 会话超时时间（秒）- 30分钟无操作自动登出
+SESSION_COOKIE_AGE = 1800  # 30分钟 = 1800秒
+# 每次请求都更新会话过期时间（保持活跃状态）
+SESSION_SAVE_EVERY_REQUEST = True
+# 会话Cookie名称（可选，增强安全性）
+SESSION_COOKIE_NAME = 'book_sessionid'
+# 防止会话固定攻击：登录后重新生成会话ID
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.JSONSerializer'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 

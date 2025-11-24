@@ -39,10 +39,12 @@
         <header class="sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-white/60 bg-white/80 dark:bg-black/60 border-b border-black/5 dark:border-white/10">
           <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-3">
-              <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm">
-                <i data-feather="book-open"></i>
-              </span>
-              <span class="text-lg font-semibold tracking-tight">校园图书借阅管理系统</span>
+              <a href="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary-600 text-white shadow-sm">
+                  <i data-feather="book-open"></i>
+                </span>
+                <span class="text-lg font-semibold tracking-tight">校园图书借阅管理系统</span>
+              </a>
             </div>
             <div class="flex items-center gap-2">
               <button id="theme-toggle" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">
@@ -50,10 +52,37 @@
                 <span class="hidden sm:inline">切换主题</span>
               </button>
               {% if request.user.is_authenticated %}
-              <a href="/admin/" class="inline-flex items-center gap-2 rounded-full bg-primary-600 text-white px-3 py-1.5 text-sm hover:bg-primary-500">
-                <i data-feather="settings"></i>
-                管理后台
-              </a>
+                {% if request.user.role == 'admin' or request.user.is_superuser %}
+                  <a href="/admin/" class="inline-flex items-center gap-2 rounded-full bg-primary-600 text-white px-3 py-1.5 text-sm hover:bg-primary-500">
+                    <i data-feather="settings"></i>
+                    管理后台
+                  </a>
+                {% elif request.user.role == 'librarian' %}
+                  <a href="/admin/" class="inline-flex items-center gap-2 rounded-full bg-primary-600 text-white px-3 py-1.5 text-sm hover:bg-primary-500">
+                    <i data-feather="settings"></i>
+                    管理后台
+                  </a>
+                {% endif %}
+                <!-- 学生用户和所有已登录用户都可以访问借阅功能 -->
+                <a href="{% url 'borrowing_demo' %}" class="inline-flex items-center gap-2 rounded-full {% if request.user.role == 'student' %}bg-primary-600 text-white hover:bg-primary-500{% else %}border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5{% endif %} px-3 py-1.5 text-sm">
+                  <i data-feather="book"></i>
+                  借阅管理
+                </a>
+                <a href="{% url 'book_list' %}" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">
+                  <i data-feather="search"></i>
+                  图书查询
+                </a>
+                <a href="/" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">
+                  <i data-feather="home"></i>
+                  首页
+                </a>
+                <form method="post" action="{% url 'logout' %}" class="inline">
+                  {% csrf_token %}
+                  <button type="submit" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">
+                    <i data-feather="log-out"></i>
+                    退出
+                  </button>
+                </form>
               {% else %}
               <a href="/admin/login/" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-3 py-1.5 text-sm hover:bg-black/5 dark:hover:bg-white/5">
                 <i data-feather="log-in"></i>
@@ -100,6 +129,70 @@
         }
       })();
       if (window.feather) window.feather.replace();
+
+      // Session security management - 会话安全管理
+      (function() {
+        {% if request.user.is_authenticated %}
+        // 仅在已登录状态下启用会话检测
+        let lastActivityTime = Date.now();
+        const SESSION_CHECK_INTERVAL = 60000; // 每分钟检查一次会话状态（60秒）
+        const INACTIVITY_TIMEOUT = 1800000; // 30分钟无操作超时（1800秒）
+
+        // 更新活动时间
+        function updateActivity() {
+          lastActivityTime = Date.now();
+        }
+
+        // 检查会话是否仍然有效
+        function checkSession() {
+          fetch(window.location.origin + '/admin/', {
+            method: 'HEAD',
+            credentials: 'include',
+            cache: 'no-cache'
+          }).then(response => {
+            if (response.status === 302 || response.status === 403) {
+              // 会话已过期，重定向到登录页
+              window.location.href = '/admin/login/?next=' + encodeURIComponent(window.location.pathname);
+            }
+          }).catch(() => {
+            // 网络错误，忽略
+          });
+        }
+
+        // 检测页面可见性变化（Page Visibility API）
+        document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible') {
+            // 页面重新可见时，检查会话状态
+            const inactiveTime = Date.now() - lastActivityTime;
+            if (inactiveTime > INACTIVITY_TIMEOUT) {
+              // 超过30分钟，检查会话
+              checkSession();
+            }
+            updateActivity();
+          }
+        });
+
+        // 监听用户活动（鼠标移动、键盘输入等）
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
+          document.addEventListener(event, updateActivity, { passive: true });
+        });
+
+        // 定期检查会话状态
+        setInterval(function() {
+          const inactiveTime = Date.now() - lastActivityTime;
+          if (inactiveTime > INACTIVITY_TIMEOUT) {
+            // 超过30分钟无操作，检查会话
+            checkSession();
+          }
+        }, SESSION_CHECK_INTERVAL);
+
+        // 浏览器关闭前标记（虽然不能完全阻止，但可以记录）
+        window.addEventListener('beforeunload', function() {
+          // 浏览器关闭时，会话Cookie会被自动删除（SESSION_EXPIRE_AT_BROWSER_CLOSE=True）
+          // 这里可以添加额外的清理逻辑
+        });
+        {% endif %}
+      })();
     </script>
 </body>
 </html>

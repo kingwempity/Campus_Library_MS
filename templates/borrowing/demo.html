@@ -2,13 +2,21 @@
 {% block title %}借阅演示 - 校园图书借阅管理系统{% endblock %}
 {% block content %}
 <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10">
-  <h2 class="text-2xl font-semibold">借阅流程演示</h2>
-  <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">先在管理后台添加图书，再在此进行借阅/归还/续借操作。</p>
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h2 class="text-2xl font-semibold">借阅流程演示</h2>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">先在管理后台添加图书，再在此进行借阅/归还/续借操作。</p>
+    </div>
+    <a href="/" class="inline-flex items-center gap-2 rounded-full border border-black/10 dark:border-white/10 px-4 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/5">
+      <i data-feather="home"></i>
+      返回首页
+    </a>
+  </div>
 
   {% if messages %}
   <div class="mt-4 space-y-2">
     {% for m in messages %}
-    <div class="rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 {{ 'bg-green-50 dark:bg-green-900/20' if m.tags=='success' else 'bg-red-50 dark:bg-red-900/20' }}">
+    <div class="rounded-lg border border-black/10 dark:border-white/10 px-4 py-2 {% if m.tags == 'success' %}bg-green-50 dark:bg-green-900/20{% else %}bg-red-50 dark:bg-red-900/20{% endif %}">
       {{ m }}
     </div>
     {% endfor %}
@@ -27,28 +35,185 @@
     </div>
     <div class="rounded-2xl p-6 border border-black/10 dark:border-white/10">
       <h3 class="font-medium flex items-center gap-2"><i data-feather="corner-down-left"></i> 归还</h3>
-      <form method="post" action="{% url 'return_book' %}" class="mt-4 space-y-3">
+      <form method="post" action="{% url 'return_book' %}" class="mt-4 space-y-3" onsubmit="return validateRecordId(this)">
         {% csrf_token %}
-        <label class="block text-sm">借阅记录ID</label>
-        <input name="record_id" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="在后台或接口查询到的ID">
+        <label class="block text-sm">借阅记录ID <span class="text-gray-500 dark:text-gray-400">(数字)</span></label>
+        <input name="record_id" type="text" pattern="[0-9]+" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="请输入数字ID，如：1" required>
+        <p class="text-xs text-gray-500 dark:text-gray-400">注意：请输入借阅记录的数字ID，不是ISBN</p>
         <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">归还</button>
       </form>
     </div>
     <div class="rounded-2xl p-6 border border-black/10 dark:border-white/10">
       <h3 class="font-medium flex items-center gap-2"><i data-feather="refresh-ccw"></i> 续借</h3>
-      <form method="post" action="{% url 'renew' %}" class="mt-4 space-y-3">
+      <form method="post" action="{% url 'renew' %}" class="mt-4 space-y-3" onsubmit="return validateRecordId(this)">
         {% csrf_token %}
-        <label class="block text-sm">借阅记录ID</label>
-        <input name="record_id" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="在后台或接口查询到的ID">
+        <label class="block text-sm">借阅记录ID <span class="text-gray-500 dark:text-gray-400">(数字)</span></label>
+        <input name="record_id" type="text" pattern="[0-9]+" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="请输入数字ID，如：1" required>
+        <p class="text-xs text-gray-500 dark:text-gray-400">注意：请输入借阅记录的数字ID，不是ISBN</p>
         <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">续借</button>
       </form>
     </div>
   </div>
 
-  <div class="mt-10 text-sm text-gray-500 dark:text-gray-400">
-    小贴士：你可以在后台的 借阅记录 查看记录ID；后续我们将提供前台列表与筛选。
+  <!-- 借阅记录列表 -->
+  <div class="mt-10">
+    <h3 class="text-lg font-semibold mb-4">{% if is_admin %}所有借阅记录{% else %}我的借阅记录{% endif %}</h3>
+    {% if request.user.is_authenticated %}
+      {% if borrow_records %}
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse border border-black/10 dark:border-white/10 rounded-lg">
+            <thead>
+              <tr class="bg-gray-50 dark:bg-zinc-800">
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">记录ID</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">借阅人</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">借阅账户</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">图书</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">ISBN</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">借出时间</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">应还时间</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">状态</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">续借次数</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">罚款金额</th>
+                <th class="border border-black/10 dark:border-white/10 px-4 py-2 text-left text-sm font-medium">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in borrow_records %}
+              <tr class="hover:bg-gray-50 dark:hover:bg-zinc-800/50">
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  <span class="font-mono font-semibold text-primary-600 dark:text-primary-400">{{ record.id }}</span>
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  <div class="flex flex-col">
+                    <span class="font-medium">{{ record.user.get_full_name|default:record.user.username }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400">
+                      {% if record.user.role == 'admin' %}管理员
+                      {% elif record.user.role == 'librarian' %}图书管理员
+                      {% elif record.user.role == 'student' %}学生
+                      {% else %}{{ record.user.role }}{% endif %}
+                    </span>
+                  </div>
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  <div class="flex flex-col">
+                    <span class="text-sm font-medium">{{ record.user.username }}</span>
+                    {% if record.user.student_id %}
+                    <span class="text-xs text-gray-500 dark:text-gray-400">学号: {{ record.user.student_id }}</span>
+                    {% else %}
+                    <span class="text-xs text-gray-400">无学号</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">{{ record.book.title }}</td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{{ record.book.isbn }}</td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2 text-sm">{{ record.borrowed_at|date:"Y-m-d H:i" }}</td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2 text-sm">
+                  {% if record.status == 'borrowed' and now > record.due_at %}
+                    <span class="text-red-600 dark:text-red-400 font-medium">{{ record.due_at|date:"Y-m-d" }}</span>
+                  {% else %}
+                    {{ record.due_at|date:"Y-m-d" }}
+                  {% endif %}
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  {% if record.status == 'borrowed' %}
+                    {% if now > record.due_at %}
+                      <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">逾期</span>
+                    {% else %}
+                      <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">借出中</span>
+                    {% endif %}
+                  {% elif record.status == 'returned' %}
+                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">已归还</span>
+                  {% else %}
+                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">{{ record.get_status_display }}</span>
+                  {% endif %}
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2 text-center">{{ record.renew_count }}</td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  {% if record.fine_amount > 0 %}
+                    <span class="font-semibold text-orange-600 dark:text-orange-400">¥{{ record.fine_amount|floatformat:2 }}</span>
+                  {% else %}
+                    <span class="text-gray-400">-</span>
+                  {% endif %}
+                </td>
+                <td class="border border-black/10 dark:border-white/10 px-4 py-2">
+                  {% if record.status == 'borrowed' or record.status == 'overdue' %}
+                    <button onclick="copyRecordId({{ record.id }})" class="text-xs text-primary-600 dark:text-primary-400 hover:underline" title="点击复制ID">复制ID</button>
+                  {% else %}
+                    <span class="text-xs text-gray-400">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          💡 提示：点击"复制ID"按钮可以快速复制借阅记录ID，然后粘贴到归还或续借表单中。
+        </p>
+      {% else %}
+        <div class="rounded-lg border border-black/10 dark:border-white/10 p-6 text-center text-gray-500 dark:text-gray-400">
+          <i data-feather="book-open" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+          <p>暂无借阅记录</p>
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="rounded-lg border border-black/10 dark:border-white/10 p-6 text-center text-gray-500 dark:text-gray-400">
+        <p>请先<a href="/admin/login/" class="text-primary-600 dark:text-primary-400 hover:underline">登录</a>后查看借阅记录</p>
+      </div>
+    {% endif %}
   </div>
 </div>
+
+<script>
+  // 前端验证：确保输入的是数字ID
+  function validateRecordId(form) {
+    const input = form.querySelector('input[name="record_id"]');
+    const value = input.value.trim();
+    
+    if (!value) {
+      alert('请输入借阅记录ID');
+      return false;
+    }
+    
+    if (!/^\d+$/.test(value)) {
+      alert('借阅记录ID必须是数字！\n您输入的是：' + value + '\n\n提示：请输入数字ID，不是ISBN。');
+      input.focus();
+      return false;
+    }
+    
+    return true;
+  }
+
+  // 复制借阅记录ID到剪贴板
+  function copyRecordId(recordId) {
+    navigator.clipboard.writeText(recordId.toString()).then(function() {
+      // 显示成功提示
+      const message = document.createElement('div');
+      message.className = 'fixed top-20 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      message.textContent = '已复制记录ID: ' + recordId;
+      document.body.appendChild(message);
+      
+      setTimeout(function() {
+        message.remove();
+      }, 2000);
+      
+      // 可选：自动填充到归还和续借表单
+      const returnInput = document.querySelector('form[action*="return"] input[name="record_id"]');
+      const renewInput = document.querySelector('form[action*="renew"] input[name="record_id"]');
+      
+      if (returnInput) returnInput.value = recordId;
+      if (renewInput) renewInput.value = recordId;
+    }).catch(function(err) {
+      console.error('复制失败:', err);
+      alert('复制失败，请手动输入ID: ' + recordId);
+    });
+  }
+
+  // 页面加载完成后初始化图标
+  if (window.feather) {
+    window.feather.replace();
+  }
+</script>
 {% endblock %}
 
 
