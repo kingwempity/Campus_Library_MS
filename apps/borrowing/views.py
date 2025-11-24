@@ -12,6 +12,10 @@ from apps.accounts.models import User
 import json
 
 
+MAX_LOAN_DAYS = 60
+MAX_RENEW_DAYS = 30
+
+
 def _get_rule() -> FineRule:
     rule = FineRule.objects.first()
     if not rule:
@@ -35,10 +39,13 @@ def demo(request):
             # 普通用户只能查看自己的借阅记录
             borrow_records = BorrowRecord.objects.filter(user=user).select_related('book', 'user').order_by('-borrowed_at')
     
+    rule = _get_rule()
+
     return render(request, 'borrowing/demo.html', {
         'borrow_records': borrow_records,
         'now': now,
-        'is_admin': user.is_authenticated and (user.role == 'admin' or user.is_superuser)
+        'is_admin': user.is_authenticated and (user.role == 'admin' or user.is_superuser),
+        'rule': rule,
     })
 
 
@@ -62,7 +69,22 @@ def borrow(request):
         return redirect('borrowing_demo')
 
     rule = _get_rule()
-    due_at = timezone.now() + timezone.timedelta(days=rule.loan_period_days)
+
+    loan_days_raw = request.POST.get('loan_days')
+    loan_days = rule.loan_period_days
+    if loan_days_raw:
+        try:
+            requested_days = int(loan_days_raw)
+            if requested_days <= 0:
+                raise ValueError
+            loan_days = min(requested_days, MAX_LOAN_DAYS)
+        except ValueError:
+            messages.warning(request, '借阅时长输入无效，已使用默认时长。')
+            loan_days = min(rule.loan_period_days, MAX_LOAN_DAYS)
+    else:
+        loan_days = min(rule.loan_period_days, MAX_LOAN_DAYS)
+
+    due_at = timezone.now() + timezone.timedelta(days=loan_days)
 
     BorrowRecord.objects.create(
         user=user,
@@ -73,7 +95,7 @@ def borrow(request):
     )
     book.available_copies -= 1
     book.save(update_fields=['available_copies'])
-    messages.success(request, f'借阅成功，应还日期：{due_at.date()}')
+    messages.success(request, f'借阅成功，应还日期：{due_at.date()} (共 {loan_days} 天)')
     return redirect('borrowing_demo')
 
 
@@ -163,10 +185,11 @@ def renew(request):
         messages.error(request, '逾期记录不可续借，请先归还。')
         return redirect('borrowing_demo')
 
-    record.due_at = record.due_at + timezone.timedelta(days=rule.loan_period_days)
+    additional_days = min(rule.loan_period_days, MAX_RENEW_DAYS)
+    record.due_at = record.due_at + timezone.timedelta(days=additional_days)
     record.renew_count += 1
     record.save(update_fields=['due_at', 'renew_count'])
-    messages.success(request, '续借成功。')
+    messages.success(request, f'续借成功，新增 {additional_days} 天。')
     return redirect('borrowing_demo')
 
 

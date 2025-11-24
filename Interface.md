@@ -82,11 +82,11 @@
 - 权限：`student`/`librarian`/`admin`（后端校验库存、上限、状态）
 - 请求体：
 ```json
-{ "isbn": "978..." }
+{ "isbn": "978...", "loan_days": 45 } // loan_days 可选，范围 1~60，缺省使用罚款规则默认值
 ```
 - 逻辑：
   - 行级锁扣减库存（`available_copies -= 1`）。
-  - 生成借阅记录（状态 `borrowed`），`due_at = now + loan_period_days`。
+  - 生成借阅记录（状态 `borrowed`），借阅时长 = `min(loan_days, 60)`，默认 `loan_period_days`。
 - 响应示例：
 ```json
 { "record_id": 123, "due_at": "2025-12-31T00:00:00+08:00" }
@@ -113,7 +113,7 @@
 ```
 - 逻辑：
   - 校验未逾期与 `max_renewals` 限制。
-  - `due_at += loan_period_days`，`renew_count += 1`。
+  - 单次续借新增时长 = `min(loan_period_days, 30)`，`due_at += 新增时长`，`renew_count += 1`。
 - 响应：`200`，返回更新后的 `due_at` 与 `renew_count`。
 
 4) 借阅记录查询（个人/全部）

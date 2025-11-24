@@ -30,6 +30,15 @@
         {% csrf_token %}
         <label class="block text-sm">ISBN</label>
         <input name="isbn" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2" placeholder="978...">
+        <label class="block text-sm mt-4">借阅时长 <span class="text-gray-500 dark:text-gray-400">(最多 60 天)</span></label>
+        <select name="loan_days" class="w-full rounded-lg border border-black/10 dark:border-white/10 bg-white dark:bg-zinc-900 px-3 py-2">
+          <option value="" selected>使用默认时长 ({{ rule.loan_period_days|default:30 }} 天)</option>
+          <option value="15">15 天</option>
+          <option value="30">30 天</option>
+          <option value="45">45 天</option>
+          <option value="60">60 天</option>
+        </select>
+        <p class="text-xs text-gray-500 dark:text-gray-400">最长可借 60 天；若不选择则使用默认时长。</p>
         <button class="w-full rounded-lg bg-primary-600 text-white px-3 py-2 hover:bg-primary-500">借阅</button>
       </form>
     </div>
